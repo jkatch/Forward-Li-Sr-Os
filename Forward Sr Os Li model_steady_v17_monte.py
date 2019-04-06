@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+#Forward Sr Os Li model
 """
 Created on Thu Jan 31 15:25:22 2019
 
