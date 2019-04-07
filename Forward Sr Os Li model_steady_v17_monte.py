@@ -44,7 +44,7 @@ Li_mol = 6.941 #g/mol
 t_interval = 1000
 
 #number of resampling
-num_monte = 20
+num_monte = 200
 
 num_points = int(np.floor((AGE_OLD - AGE_YOUNG) * 1E6 / t_interval) + 1)
 
@@ -503,7 +503,7 @@ temp_change = temp_perturb(13, perturb_interval)
 
 #camp = light_perturb(1E7, 6E5)
 #camp = light_perturb(5E6, 4E6)
-camp = light_perturb(5E6, 1E6) #CAMP activity may have lasted 600 kyr according to Blackburn et al. 2013 Science
+camp = light_perturb(5E6, 2.6E6) #CAMP activity may have lasted 600 kyr according to Blackburn et al. 2013 Science
 f_sw = 115*1000 #115 t/km^2 *yr value from Cohen and Coe P^3 2007 converted to kg/km^2 * yr
 
 R_Li_lt_interp = sci.interpolate.interp1d(R_Li_lt_orig[0], R_Li_lt_orig[1])
@@ -530,6 +530,7 @@ frac_bas_interp = sci.interpolate.interp1d(temp_change[0], frac_bas)
 K_riv_monte = np.random.uniform(1, K_riv_mag, num_monte) 
 K_ht_monte = np.random.uniform(1, K_ht_mag, num_monte) 
 K_lt_monte = np.random.uniform(1, K_lt_mag, num_monte) 
+K_light_monte = np.random.uniform(1, K_light_mag, num_monte) 
 
 
 age_all = np.linspace((-1E5+1), 1.09E6, 2600)
@@ -546,7 +547,7 @@ for i in range(0, num_monte):
     K_riv_orig = perturb(K_riv_monte[i], perturb_interval)
     K_ht_orig = perturb(K_ht_monte[i], perturb_interval)
     K_lt_orig = perturb(K_lt_monte[i], perturb_interval)
-    K_light_orig = light_perturb(K_light_mag, perturb_interval)
+    K_light_orig = light_perturb(K_light_monte[i], perturb_interval)
     
     K_riv_interp = sci.interpolate.interp1d(K_riv_orig[0], K_riv_orig[1])
     K_ht_interp = sci.interpolate.interp1d(K_ht_orig[0], K_ht_orig[1])
@@ -589,11 +590,11 @@ for i in range(0, num_monte):
     dSr_plot = dSr_total.flatten()
     
     
-    if all(dLi_plot <= dLi_plot_real + 0.33*dLi_plot_real) and all(dLi_plot >= dLi_plot_real - 0.33*dLi_plot_real):
-        data = pd.DataFrame({'K_lt': [K_lt_monte[i]], 'K_ht': [K_ht_monte[i]], 'K_riv': [K_riv_monte[i]], 'K_light': [K_light_mag]})
+    if all(dLi_plot <= dLi_plot_real + 4) and all(dLi_plot >= dLi_plot_real - 4) and all(dSr_plot <= dSr_plot_real +0.0006) and all(dSr_plot >= dSr_plot_real - 0.0006):
+        data = pd.DataFrame({'K_lt': [K_lt_monte[i]], 'K_ht': [K_ht_monte[i]], 'K_riv': [K_riv_monte[i]], 'K_light': [K_light_monte[i]]})
         success = success.append(data)
     else:
-        data_fail = pd.DataFrame({'K_lt': [K_lt_monte[i]], 'K_ht': [K_ht_monte[i]], 'K_riv': [K_riv_monte[i]], 'K_light': [K_light_mag]})
+        data_fail = pd.DataFrame({'K_lt': [K_lt_monte[i]], 'K_ht': [K_ht_monte[i]], 'K_riv': [K_riv_monte[i]], 'K_light': [K_light_monte[i]]})
         failure = failure.append(data_fail)
 
 
@@ -610,15 +611,14 @@ t_plot = t_change1
 #age_dSr_plot = df_dSr_ocean['Age (Ma)'].sort_values(ascending=False)
 #age_dSr_plot_real = ((age_dSr_plot[253] - age_dSr_plot)* 1E6)
 
-upper_dLi_plot_real = dLi_plot_real + 0.33*dLi_plot_real
-lower_dLi_plot_real = dLi_plot_real - 0.33*dLi_plot_real
+upper_dLi_plot_real = dLi_plot_real + 4
+lower_dLi_plot_real = dLi_plot_real - 4
 
-upper_dSr_plot_real = dSr_plot_real + 0.0005*dSr_plot_real
-lower_dSr_plot_real = dSr_plot_real - 0.0005*dSr_plot_real
+upper_dSr_plot_real = dSr_plot_real + 0.0006
+lower_dSr_plot_real = dSr_plot_real - 0.0006
 
-upper_dOs_plot_real = dOs_plot_real + 0.1*dOs_plot_real
-lower_dOs_plot_real = dOs_plot_real - 0.1*dOs_plot_real
-
+upper_dOs_plot_real = dOs_plot_real + 0.1
+lower_dOs_plot_real = dOs_plot_real - 0.1
 
 sns.set_color_codes()
 sns.set_style('white')
@@ -638,7 +638,7 @@ axarr[1,0].plot(age_all_plot, dLi_plot, 'g--', label = 'dLi')
 #axarr[1,0].plot(t_plot, dLi_plot, 'g--', label = 'dLi')
 #axarr[1,0].set_xlim(0, 2.6E6)
 axarr[1,0].invert_xaxis()
-#axarr[1].set_ylim(10,20)
+axarr[1,0].set_ylim(8,20)
 axarr[1,0].legend(loc = 'best')
 axarr[1,0].set_xticks([])
 
@@ -646,7 +646,7 @@ axarr[2,0].plot(age_all_plot, dSr_plot, 'b--', label = 'dSr')
 #axarr[2,0].plot(t_plot, dSr_plot, 'b--', label = 'dSr')
 #axarr[2,0].set_xlim(0, 2.6E6)
 axarr[2,0].invert_xaxis()
-#axarr[2].set_ylim(0.7073,0.7078)
+axarr[2,0].set_ylim(0.7045,0.707)
 axarr[2,0].legend(loc = 'best')
 
 #Real Data
@@ -660,6 +660,7 @@ axarr[0,1].fill_between(age_all_plot, upper_dOs_plot_real, lower_dOs_plot_real, 
 #axarr[0,1].set_xticks([])
 
 axarr[1,1].plot(age_all_plot, dLi_plot_real, 'g--', label = 'dLi')
+axarr[1,1].plot(age_all_plot, dLi_plot, 'y')
 #axarr[1].set_ylim(10,20)
 #axarr[1,1].set_xlim(0, 5e6)
 axarr[1,1].invert_xaxis()
@@ -668,6 +669,7 @@ axarr[1,1].fill_between(age_all_plot, upper_dLi_plot_real, lower_dLi_plot_real, 
 #axarr[1,1].set_xticks([])
 
 axarr[2,1].plot(age_all_plot, dSr_plot_real, 'b--', label = 'dSr')
+axarr[2,1].plot(age_all_plot, dSr_plot, 'y')
 axarr[2,1].invert_xaxis()
 axarr[2,1].fill_between(age_all_plot, upper_dSr_plot_real, lower_dSr_plot_real, facecolor='blue', alpha=0.3)
 #axarr[2].set_ylim(0.7073,0.7078)
@@ -678,6 +680,12 @@ f.tight_layout()
 f.subplots_adjust(top = 0.8)
 
 print('number of successes: ' + str(len(success)) + ' & number of failures: ' + str(len(failure)))
+
+success.index = ['success'] * len(success)
+failure.index = ['failure'] * len(failure)
+total_k = failure.append(success)
+#
+#total_k.to_excel('Forward_Sr_Os_Li_K_results.xlsx')
 
 #f.subplots_adjust(hspace = 0.5)
 
