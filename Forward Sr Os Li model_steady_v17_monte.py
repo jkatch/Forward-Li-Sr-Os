@@ -44,7 +44,7 @@ Li_mol = 6.941 #g/mol
 t_interval = 1000
 
 #number of resampling
-num_monte = 200
+num_monte = 500
 
 num_points = int(np.floor((AGE_OLD - AGE_YOUNG) * 1E6 / t_interval) + 1)
 
@@ -479,7 +479,7 @@ t=0
 
 
 #time length of perturbation
-perturb_interval = 4E5
+perturb_interval = 8E5
 
 K_riv_mag = 10
 K_ht_mag = 2
@@ -503,7 +503,7 @@ temp_change = temp_perturb(13, perturb_interval)
 
 #camp = light_perturb(1E7, 6E5)
 #camp = light_perturb(5E6, 4E6)
-camp = light_perturb(5E6, 2.6E6) #CAMP activity may have lasted 600 kyr according to Blackburn et al. 2013 Science
+camp = light_perturb(5E6, 2.6E6) #km^2; CAMP activity may have lasted 600 kyr according to Blackburn et al. 2013 Science
 f_sw = 115*1000 #115 t/km^2 *yr value from Cohen and Coe P^3 2007 converted to kg/km^2 * yr
 
 R_Li_lt_interp = sci.interpolate.interp1d(R_Li_lt_orig[0], R_Li_lt_orig[1])
@@ -541,6 +541,9 @@ dSr_plot_real = dSr_ocean_interp(age_all)
 
 success = pd.DataFrame()
 failure = pd.DataFrame()
+
+Li_success_results = pd.DataFrame(age_all_plot, columns = ['Age (Ma)'])
+Sr_success_results = pd.DataFrame(age_all_plot, columns = ['Age (Ma)'])
 
 
 for i in range(0, num_monte):
@@ -590,9 +593,13 @@ for i in range(0, num_monte):
     dSr_plot = dSr_total.flatten()
     
     
-    if all(dLi_plot <= dLi_plot_real + 4) and all(dLi_plot >= dLi_plot_real - 4) and all(dSr_plot <= dSr_plot_real +0.0006) and all(dSr_plot >= dSr_plot_real - 0.0006):
+    if all(dLi_plot <= dLi_plot_real + 3) and all(dLi_plot >= dLi_plot_real - 3) and all(dSr_plot <= dSr_plot_real +0.0006) and all(dSr_plot >= dSr_plot_real - 0.0006):
         data = pd.DataFrame({'K_lt': [K_lt_monte[i]], 'K_ht': [K_ht_monte[i]], 'K_riv': [K_riv_monte[i]], 'K_light': [K_light_monte[i]]})
+#        success.loc['success' + str(len(success))] = data
         success = success.append(data)
+        Li_success_results.insert(len(Li_success_results.columns), 'success' + str(len(success)), dLi_plot)
+#        Li_success_results.insert(len(Li_success_results.columns), 'K_lt: ' + str(K_lt_monte[i]) + ', K_ht: ' + str(K_ht_monte[i]) + ', K_riv: ' + str(K_riv_monte[i]) + ', K_light: ' + str(K_light_monte[i]), dLi_plot)
+        Sr_success_results.insert(len(Sr_success_results.columns), 'success' + str(len(success)), dSr_plot)
     else:
         data_fail = pd.DataFrame({'K_lt': [K_lt_monte[i]], 'K_ht': [K_ht_monte[i]], 'K_riv': [K_riv_monte[i]], 'K_light': [K_light_monte[i]]})
         failure = failure.append(data_fail)
@@ -611,8 +618,8 @@ t_plot = t_change1
 #age_dSr_plot = df_dSr_ocean['Age (Ma)'].sort_values(ascending=False)
 #age_dSr_plot_real = ((age_dSr_plot[253] - age_dSr_plot)* 1E6)
 
-upper_dLi_plot_real = dLi_plot_real + 4
-lower_dLi_plot_real = dLi_plot_real - 4
+upper_dLi_plot_real = dLi_plot_real + 3
+lower_dLi_plot_real = dLi_plot_real - 3
 
 upper_dSr_plot_real = dSr_plot_real + 0.0006
 lower_dSr_plot_real = dSr_plot_real - 0.0006
@@ -660,7 +667,8 @@ axarr[0,1].fill_between(age_all_plot, upper_dOs_plot_real, lower_dOs_plot_real, 
 #axarr[0,1].set_xticks([])
 
 axarr[1,1].plot(age_all_plot, dLi_plot_real, 'g--', label = 'dLi')
-axarr[1,1].plot(age_all_plot, dLi_plot, 'y')
+#axarr[1,1].plot(age_all_plot, dLi_plot, 'y')
+axarr[1,1].plot(Li_success_results.set_index('Age (Ma)'))
 #axarr[1].set_ylim(10,20)
 #axarr[1,1].set_xlim(0, 5e6)
 axarr[1,1].invert_xaxis()
@@ -669,7 +677,8 @@ axarr[1,1].fill_between(age_all_plot, upper_dLi_plot_real, lower_dLi_plot_real, 
 #axarr[1,1].set_xticks([])
 
 axarr[2,1].plot(age_all_plot, dSr_plot_real, 'b--', label = 'dSr')
-axarr[2,1].plot(age_all_plot, dSr_plot, 'y')
+#axarr[2,1].plot(age_all_plot, dSr_plot, 'y')
+axarr[2,1].plot(Sr_success_results.set_index('Age (Ma)'))
 axarr[2,1].invert_xaxis()
 axarr[2,1].fill_between(age_all_plot, upper_dSr_plot_real, lower_dSr_plot_real, facecolor='blue', alpha=0.3)
 #axarr[2].set_ylim(0.7073,0.7078)
@@ -681,11 +690,14 @@ f.subplots_adjust(top = 0.8)
 
 print('number of successes: ' + str(len(success)) + ' & number of failures: ' + str(len(failure)))
 
-success.index = ['success'] * len(success)
-failure.index = ['failure'] * len(failure)
+success.index = ['success' + str(len(success))] * len(success)
+failure.index = ['failure' + str(len(failure))] * len(failure)
 total_k = failure.append(success)
 #
 #total_k.to_excel('Forward_Sr_Os_Li_K_results.xlsx')
+#
+#Li_success_results.to_excel('Forward_Li_results.xlsx')
+#Sr_success_results.to_excel('Forward_Sr_results.xlsx')
 
 #f.subplots_adjust(hspace = 0.5)
 
