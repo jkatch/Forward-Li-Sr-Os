@@ -44,7 +44,7 @@ Li_mol = 6.941 #g/mol
 t_interval = 1000
 
 #number of resampling
-num_monte = 500
+num_monte = 1000
 
 num_points = int(np.floor((AGE_OLD - AGE_YOUNG) * 1E6 / t_interval) + 1)
 
@@ -527,10 +527,10 @@ k = [10E15* math.exp(-92/((8.314472/1000) * x)) for x in kelvin_temp]
 frac_bas = [math.exp(x) - 1 for x in k]
 frac_bas_interp = sci.interpolate.interp1d(temp_change[0], frac_bas)
 
-K_riv_monte = np.random.uniform(1, K_riv_mag, num_monte) 
-K_ht_monte = np.random.uniform(1, K_ht_mag, num_monte) 
-K_lt_monte = np.random.uniform(1, K_lt_mag, num_monte) 
-K_light_monte = np.random.uniform(1, K_light_mag, num_monte) 
+K_riv_monte = np.round(np.random.uniform(1, K_riv_mag, num_monte), 2)
+K_ht_monte = np.round(np.random.uniform(1, K_ht_mag, num_monte), 2)
+K_lt_monte = np.round(np.random.uniform(1, K_lt_mag, num_monte), 2)
+K_light_monte = np.round(np.random.uniform(1, K_light_mag, num_monte), 2) 
 
 
 age_all = np.linspace((-1E5+1), 1.09E6, 2600)
@@ -545,6 +545,10 @@ failure = pd.DataFrame()
 Li_success_results = pd.DataFrame(age_all_plot, columns = ['Age (Ma)'])
 Sr_success_results = pd.DataFrame(age_all_plot, columns = ['Age (Ma)'])
 
+K_riv_success_results = pd.DataFrame()
+K_ht_success_results = pd.DataFrame()
+K_lt_success_results = pd.DataFrame()
+K_light_success_results  = pd.DataFrame()
 
 for i in range(0, num_monte):
     K_riv_orig = perturb(K_riv_monte[i], perturb_interval)
@@ -595,11 +599,19 @@ for i in range(0, num_monte):
     
     if all(dLi_plot <= dLi_plot_real + 3) and all(dLi_plot >= dLi_plot_real - 3) and all(dSr_plot <= dSr_plot_real +0.0006) and all(dSr_plot >= dSr_plot_real - 0.0006):
         data = pd.DataFrame({'K_lt': [K_lt_monte[i]], 'K_ht': [K_ht_monte[i]], 'K_riv': [K_riv_monte[i]], 'K_light': [K_light_monte[i]]})
+        
 #        success.loc['success' + str(len(success))] = data
         success = success.append(data)
-        Li_success_results.insert(len(Li_success_results.columns), 'success' + str(len(success)), dLi_plot)
-#        Li_success_results.insert(len(Li_success_results.columns), 'K_lt: ' + str(K_lt_monte[i]) + ', K_ht: ' + str(K_ht_monte[i]) + ', K_riv: ' + str(K_riv_monte[i]) + ', K_light: ' + str(K_light_monte[i]), dLi_plot)
-        Sr_success_results.insert(len(Sr_success_results.columns), 'success' + str(len(success)), dSr_plot)
+#        Li_success_results.insert(len(Li_success_results.columns), 'success' + str(len(success)), dLi_plot)
+        Li_success_results.insert(len(Li_success_results.columns), 'K_lt: ' + str(K_lt_monte[i]) + ', K_ht: ' + str(K_ht_monte[i]) + ', K_riv: ' + str(K_riv_monte[i]) + ', K_light: ' + str(K_light_monte[i]), dLi_plot)
+        Sr_success_results.insert(len(Sr_success_results.columns), 'K_lt: ' + str(K_lt_monte[i]) + ', K_ht: ' + str(K_ht_monte[i]) + ', K_riv: ' + str(K_riv_monte[i]) + ', K_light: ' + str(K_light_monte[i]), dSr_plot)
+        
+        K_riv_success_results.insert(len(K_riv_success_results.columns), 'success' + str(len(success)), K_riv_orig[1])
+        K_ht_success_results.insert(len(K_ht_success_results.columns), 'success' + str(len(success)), K_ht_orig[1])
+        K_lt_success_results.insert(len(K_lt_success_results.columns), 'success' + str(len(success)), K_lt_orig[1])
+        K_light_success_results.insert(len(K_light_success_results.columns), 'success' + str(len(success)), K_light_orig[1])
+        
+        
     else:
         data_fail = pd.DataFrame({'K_lt': [K_lt_monte[i]], 'K_ht': [K_ht_monte[i]], 'K_riv': [K_riv_monte[i]], 'K_light': [K_light_monte[i]]})
         failure = failure.append(data_fail)
@@ -693,6 +705,23 @@ print('number of successes: ' + str(len(success)) + ' & number of failures: ' + 
 success.index = ['success' + str(len(success))] * len(success)
 failure.index = ['failure' + str(len(failure))] * len(failure)
 total_k = failure.append(success)
+
+
+continental_K = K_riv_success_results + K_light_success_results
+seafloor_K = K_lt_success_results
+
+relative_cont_to_sea = continental_K/seafloor_K
+
+avg_relative_cont_to_sea = relative_cont_to_sea.mean(1)
+
+fig, ax = plt.subplots()
+ax.plot(relative_cont_to_sea)
+ax.plot(avg_relative_cont_to_sea, 'yo')
+
+#K_riv_success_pct_change = K_riv_success_results.pct_change()
+#K_ht_success_pct_change = K_ht_success_results.pct_change()
+#K_lt_success_pct_change = K_lt_success_results.pct_change()
+#K_light_success_pct_change  = K_light_success_results.pct_change()
 #
 #total_k.to_excel('Forward_Sr_Os_Li_K_results.xlsx')
 #
@@ -702,130 +731,3 @@ total_k = failure.append(success)
 #f.subplots_adjust(hspace = 0.5)
 
 #f.savefig('C:/Users/joach/Desktop/Python/Foward_model_figures/4myr_kht1_2.png', bbox_inches='tight')
-
-##Start of filtering
-#success = pd.DataFrame()
-#failure = pd.DataFrame()
-#num_monte_sucess = []
-#
-#
-#if all(dLi_plot <= dLi_plot_real + 0.33*dLi_plot_real) and all(dLi_plot >= dLi_plot_real - 0.33*dLi_plot_real):
-#    data = pd.DataFrame({'K_lt': [K_lt_mag], 'K_ht': [K_ht_mag], 'K_riv': [K_riv_mag], 'K_light': [K_light_mag]})
-#    success = success.append(data)
-#else:
-#    data_fail = pd.DataFrame({'K_lt': [K_lt_mag], 'K_ht': [K_ht_mag], 'K_riv': [K_riv_mag], 'K_light': [K_light_mag]})
-#    failure = failure.append(data_fail)
-
-
-#for i in range(0, num_monte):
-#    if dLi_plot_real[i] <= dLi_plot_real[i] + 0.33*dLi_plot_real[i] and dLi_plot_real[i] >= dLi_plot_real[i] - 0.33*dLi_plot_real[i]:
-#        num_monte_sucess.append(1)
-#        if num_monte_success[i] = 1:
-#            data = pd.DataFrame({'K_lt': [K_lt_mag], 'K_ht': [K_ht_mag], 'K_riv': [K_riv_mag], 'K_light': [K_light_mag]})
-#            success = success.append(data)
-#    else:
-#        num_monte_success.append(0)
-#        data_fail = pd.DataFrame({'K_lt': [-10], 'K_ht': [-10], 'K_riv': [-10], 'K_light': [-10]})
-#        success = success.append(data_fail)
-
-#
-#
-#for i in range(0, len(dLi_plot_real)):
-#    if dLi_plot_real[i] <= dLi_plot_real[i] + 0.33*dLi_plot_real[i] and dLi_plot_real[i] >= dLi_plot_real[i] - 0.33*dLi_plot_real[i]:
-#        data = pd.DataFrame({'K_lt': [K_lt_mag], 'K_ht': [K_ht_mag], 'K_riv': [K_riv_mag], 'K_light': [K_light_mag]})
-#        success = success.append(data)
-#    else:
-#        data_fail = pd.DataFrame({'K_lt': [-10], 'K_ht': [-10], 'K_riv': [-10], 'K_light': [-10]})
-#        success = success.append(data_fail)
-#
-##
-#f, axarr = plt.subplots(3)
-#axarr[0].plot(t_plot, dOs_plot, 'r--', label = 'dOs')
-##axarr[0].set_ylim(0.4,1)
-##axarr[0].plot(test, dOs_ocean_record_smooth[:,1]) this is to plot the real Os record along side the modeled ouput
-#axarr[0].legend(loc = 'best')
-#axarr[0].set_title(str(len(t_change2)) + ' kyr perturbation w/ ' + 'K_lt: ' + str(K_lt_monte) + ', K_ht: ' + str(K_ht_monte) + ', K_riv: ' + str(K_riv_monte) + ', K_light: ' + str(K_light_monte))
-#axarr[0].set_xticks([])
-#
-#
-#axarr[1].plot(t_plot, dLi_plot, 'g--', label = 'dLi')
-##axarr[1].set_ylim(10,20)
-#axarr[1].legend(loc = 'best')
-#axarr[1].set_xticks([])
-#
-#
-#axarr[2].plot(t_plot, dSr_plot, 'b--', label = 'dSr')
-##axarr[2].set_ylim(0.7073,0.7078)
-#axarr[2].legend(loc = 'best')
-#
-#f.tight_layout()
-#f.subplots_adjust(top = 0.8)
-#
-#
-
-
-
-##dOs_total_origin = dOs_total
-###dOs_total = 7.4 * dOs_total/(1 - dOs_total)
-##
-##dSr_total_origin = dOs_total
-##
-##dLi_total_origin = dLi_total
-##
-###Average and std dev of Os outputs
-##dOs_ave = np.nanmean(dOs_total, axis = 0)
-##dOs_std = np.nanstd(dOs_total, axis = 0)
-##dOs_total_low = dOs_ave - dOs_std
-##dOs_total_high = dOs_ave + dOs_std
-##
-###Average and std dev of Sr outputs
-##dSr_ave = np.nanmean(dSr_total, axis = 0)
-##dSr_std = np.nanstd(dSr_total, axis = 0)
-##dSr_total_low = dSr_ave - dSr_std
-##dSr_total_high = dSr_ave + dSr_std
-##
-###Average and std dev of Li outputs
-##dLi_ave = np.nanmean(dLi_total, axis = 0)
-##dLi_std = np.nanstd(dLi_total, axis = 0)
-##dLi_total_low = dLi_ave - dLi_std
-##dLi_total_high = dLi_ave + dLi_std
-#
-#
-#age_all_plot_book = np.linspace(AGE_OLD, AGE_YOUNG, 2601)
-#
-##Swaps columns to rows, and vice versa
-#dOs_total_final_t = np.transpose(dOs_total_final)
-#dSr_total_final_t = np.transpose(dSr_total_final)
-#dLi_total_final_t = np.transpose(dLi_total_final)
-#
-##Prints all forward modeled outputs to excel
-#df_Os = pd.DataFrame(dOs_total_final_t)
-#df_Os.insert(0 , 'Age (Ma)', age_all_plot_book)
-#df_Os.to_excel('Forwardtest_Os_solvedflux_1Ktoend.xlsx', index = False)
-#
-#df_Sr = pd.DataFrame(dSr_total_final_t)
-#df_Sr.insert(0 , 'Age (Ma)', age_all_plot_book)
-#df_Sr.to_excel('Forwardtest_Sr_solvedflux_1Ktoend.xlsx', index = False)
-#
-#df_Li = pd.DataFrame(dLi_total_final_t)
-#df_Li.insert(0 , 'Age (Ma)', age_all_plot_book)
-#df_Li.to_excel('Forwardtest_Li_solvedflux_1Ktoend.xlsx', index = False)
-#
-#
-##spreadsheet_data = pd.DataFrame({'Age (Ma)': age_all_plot_book, 'Os_ratio': dOs_total_final_t})
-##spreadsheet_data.to_excel('Forwardtest_solvedflux_1Ktoend.xlsx', index = False)
-##
-#fig, ax = plt.subplots()
-#
-#ax.plot(t_plot, dOs_plot)
-#
-#ax.set_ylim(0, 1)
-
-##plt.subplot(2, 1, 1)
-##plt.plot(dLi_ocean_record_smooth[:,0], dLi_ocean_record_smooth[:,1])
-##plt.ylabel('dLi')
-##
-##plt.subplot(2,1,2)
-##plt.plot(dOs_ocean_record_smooth[:,0], dOs_ocean_record_smooth[:,1])
-##
-##plt.show()
